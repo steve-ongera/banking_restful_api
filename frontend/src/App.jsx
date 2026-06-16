@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/navbar';
 import Sidebar from './components/sidebar';
 import Login from './pages/login';
 import CustomerDashboard from './pages/customerdashboard';
@@ -19,13 +20,16 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Layout with Sidebar
-const DashboardLayout = ({ children }) => {
+// Layout with Navbar and Sidebar
+const MainLayout = ({ children }) => {
   return (
-    <div style={{ display: 'flex' }}>
-      <Sidebar />
-      <div className="main-content">
-        {children}
+    <div className="app-layout">
+      <Navbar />
+      <div className="layout-content">
+        <Sidebar />
+        <div className="main-content">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -39,37 +43,37 @@ function App() {
         <Route path="/register" element={<Login />} />
         <Route path="/dashboard" element={
           <ProtectedRoute>
-            <DashboardLayout>
+            <MainLayout>
               <CustomerDashboard />
-            </DashboardLayout>
+            </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/send-money" element={
           <ProtectedRoute>
-            <DashboardLayout>
+            <MainLayout>
               <SendMoney />
-            </DashboardLayout>
+            </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/transactions" element={
           <ProtectedRoute>
-            <DashboardLayout>
+            <MainLayout>
               <Transactions />
-            </DashboardLayout>
+            </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/profile" element={
           <ProtectedRoute>
-            <DashboardLayout>
+            <MainLayout>
               <Profile />
-            </DashboardLayout>
+            </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/deposit" element={
           <ProtectedRoute>
-            <DashboardLayout>
+            <MainLayout>
               <Deposit />
-            </DashboardLayout>
+            </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/dashboard" />} />

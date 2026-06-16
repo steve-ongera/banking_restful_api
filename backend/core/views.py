@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.db import transaction as db_transaction
@@ -24,41 +25,52 @@ class UserRegistrationView(generics.CreateAPIView):
         # Create bank account for user
         from django.utils.crypto import get_random_string
         account_number = get_random_string(12, allowed_chars='0123456789')
-        BankAccount.objects.create(user=user, account_number=account_number)
+        bank_account = BankAccount.objects.create(user=user, account_number=account_number)
+        
+        # Create token for user
+        token, created = Token.objects.get_or_create(user=user)
         
         return Response({
             'message': 'User registered successfully',
             'user': UserSerializer(user).data,
-            'account_number': account_number
+            'account': BankAccountSerializer(bank_account).data,
+            'token': token.key
         }, status=status.HTTP_201_CREATED)
 
-class LoginView(generics.GenericAPIView):
+class LoginView(ObtainAuthToken):
     permission_classes = [AllowAny]
     
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
         
-        user = authenticate(username=username, password=password)
-        if user:
-            login(request, user)
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
-                'user': UserSerializer(user).data,
-                'account': BankAccountSerializer(user.bankaccount).data
-            })
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        # Get or create bank account
+        try:
+            bank_account = BankAccount.objects.get(user=user)
+        except BankAccount.DoesNotExist:
+            from django.utils.crypto import get_random_string
+            account_number = get_random_string(12, allowed_chars='0123456789')
+            bank_account = BankAccount.objects.create(user=user, account_number=account_number)
+        
+        return Response({
+            'token': token.key,
+            'user': UserSerializer(user).data,
+            'account': BankAccountSerializer(bank_account).data
+        })
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         try:
+            # Delete the user's token to logout
             request.user.auth_token.delete()
-        except:
-            pass
-        return Response({'message': 'Logged out successfully'})
+            return Response({'message': 'Logged out successfully'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
@@ -75,18 +87,24 @@ class BankAccountViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return BankAccount.objects.filter(user=self.request.user)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def balance(self, request):
-        account = BankAccount.objects.get(user=request.user)
-        return Response({'balance': account.balance})
+        try:
+            account = BankAccount.objects.get(user=request.user)
+            return Response({'balance': account.balance})
+        except BankAccount.DoesNotExist:
+            return Response({'error': 'Account not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        user_account = BankAccount.objects.get(user=self.request.user)
-        return Transaction.objects.filter(sender=user_account) | Transaction.objects.filter(receiver=user_account)
+        try:
+            user_account = BankAccount.objects.get(user=self.request.user)
+            return Transaction.objects.filter(sender=user_account) | Transaction.objects.filter(receiver=user_account)
+        except BankAccount.DoesNotExist:
+            return Transaction.objects.none()
     
     def create(self, request):
         serializer = TransactionCreateSerializer(data=request.data)

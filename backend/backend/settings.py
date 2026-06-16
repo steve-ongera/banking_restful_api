@@ -34,7 +34,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 
-    # Local
+    
+    'rest_framework.authtoken',  # Make sure this is included
+
     'core',
 ]
 
@@ -127,6 +129,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',  # ← this was missing
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
@@ -137,10 +140,9 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 12,
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',   # remove in production
+        'rest_framework.renderers.BrowsableAPIRenderer',
     ],
 }
-
 
 # ─────────────────────────────────────────────
 # CORS  (for React dev server on :3000 / :5173)
