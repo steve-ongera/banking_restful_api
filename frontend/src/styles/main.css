@@ -1,0 +1,22 @@
+
+body {
+  margin: 0;
+  font-family: Arial;
+}
+
+.app {
+  display: flex;
+}
+
+.sidebar {
+  width: 220px;
+  background: #111;
+  color: white;
+  height: 100vh;
+  padding: 20px;
+}
+
+.main {
+  flex: 1;
+  padding: 20px;
+}
