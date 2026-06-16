@@ -1,16 +1,46 @@
+import axios from 'axios';
 
-export const API_URL = "http://localhost:8000/api";
+const API_BASE_URL = 'http://localhost:8000/api';
 
-export async function getAccounts() {
-  const res = await fetch(`${API_URL}/accounts/`);
-  return res.json();
-}
+// Create axios instance with interceptors
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-export async function sendMoney(data) {
-  const res = await fetch(`${API_URL}/send/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return res.json();
-}
+// Add token to requests if available
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Token ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Auth services
+export const authService = {
+  register: (userData) => api.post('/register/', userData),
+  login: (credentials) => api.post('/login/', credentials),
+  logout: () => api.post('/logout/'),
+  getProfile: () => api.get('/profile/'),
+  updateProfile: (data) => api.put('/profile/', data),
+};
+
+// Account services
+export const accountService = {
+  getAccounts: () => api.get('/accounts/'),
+  getBalance: () => api.get('/accounts/balance/'),
+};
+
+// Transaction services
+export const transactionService = {
+  getAll: () => api.get('/transactions/'),
+  create: (data) => api.post('/transactions/', data),
+};
+
+export default api;
